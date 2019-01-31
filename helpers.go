@@ -32,27 +32,60 @@ func (ap *appenderSetup) AddTask(t ...Task) (err error) {
 	return
 }
 
-func Setup(t ...Task) (task Task, err error) {
-	appender := appenderSetup{NewAppender()}
-	if err = appender.AddTask(t...); err != nil {
+func MustRun(done func(), t ...Task) error {
+	pt, err := Prepare(t...)
+	if err != nil {
+		return err
+	}
+	d := make(chan interface{})
+	if _, err = pt.Start(func() {
+		d <- nil
+		done()
+	}); err == nil {
+		<-d
+	}
+	close(d)
+	return err
+}
+
+func MustStart(done func(), t ...Task) (s Stoper, err error) {
+	var pt *PreparedTasks
+	pt, err = Prepare(t...)
+	if err != nil {
 		return
 	}
-	task = appender.Tasks()
+	return pt.Start(done)
+}
+
+func Start(done func(state *State), t ...Task) (s Stoper, err error) {
+	var pt *PreparedTasks
+	pt, err = Prepare(t...)
+	if err != nil {
+		return
+	}
+	var state *State
+	state, err = pt.Start(func() {
+		done(state)
+	})
+	s = state
 	return
 }
 
-func Run(done func(), t ...Task) (s Stoper, err error) {
-	if t, err := Setup(t...); err != nil {
-		return nil, err
-	} else {
-		return t.Start(done)
+func Run(done func(state *State), t ...Task) (err error) {
+	var pt *PreparedTasks
+	pt, err = Prepare(t...)
+	if err != nil {
+		return
 	}
-}
 
-func Start(done func(), t ...Task) (s Stoper, err error) {
-	if t, err := Setup(t...); err != nil {
-		return nil, err
-	} else {
-		return t.Start(done)
+	var state *State
+	d := make(chan interface{})
+	if state, err = pt.Start(func() {
+		d <- nil
+		done(state)
+	}); err == nil {
+		<-d
 	}
+	close(d)
+	return
 }

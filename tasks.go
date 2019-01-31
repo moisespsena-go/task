@@ -1,7 +1,7 @@
 package task
 
 import (
-	"sync"
+	"context"
 
 	"github.com/op/go-logging"
 )
@@ -17,105 +17,23 @@ func (tasks Slice) Setup(appender Appender) (err error) {
 	return nil
 }
 
-func (tasks Slice) Prepare() (ts Slice, stop Stopers, wg *sync.WaitGroup, postRun func(), err error) {
-	if len(tasks) == 0 {
-		return
-	}
-
-	wg = &sync.WaitGroup{}
-
-	var (
-		ta       = &TaskAppender{}
-		postRunS PostRunSlice
-		s        Stoper
-		i        int
-		t        Task
-	)
-
-	for i, t = range tasks {
-		if pr, ok := t.(PreRunCallback); ok {
-			if err = pr.TaskPreRun(ta); err != nil {
-				return
-			}
-		}
-		if pr, ok := t.(PostRunCallback); ok {
-			postRunS = append(postRunS, pr.TaskPosRun)
-		}
-	}
-
-	postRun = func() {
-		for _, pr := range postRunS {
-			pr()
-		}
-	}
-
-	tasks = append(tasks, ta.tasks...)
-	stop = make(Stopers, len(tasks))
-
-	wg.Add(len(tasks))
-
-	for i, t = range tasks {
-		if s, err = t.Start(wg.Done); err != nil {
-			for _, s = range stop[0:i] {
-				s.Stop()
-			}
-			break
-		} else {
-			stop[i] = s
-		}
-	}
-
-	ts = tasks
-	return
-}
-
 func (tasks Slice) Run() (err error) {
-	_, _, wg, postRun, err := tasks.Prepare()
-	if err != nil {
-		return
-	}
-	defer postRun()
-	wg.Wait()
-	return
-}
-
-func (tasks Slice) StartOnly(wg *sync.WaitGroup, postRun, done func()) {
-	if len(tasks) == 0 {
-		done()
-		return
-	}
-
-	go func() {
-		defer func() {
-			done()
-		}()
-		defer postRun()
-		wg.Wait()
-	}()
+	return MustRun(nil, tasks...)
 }
 
 func (tasks Slice) Start(done func()) (s Stoper, err error) {
-	if len(tasks) == 0 {
-		done()
-		return &FakeStoper{}, nil
-	}
-
-	tasks, stop, wg, postRun, err := tasks.Prepare()
-	if err != nil {
-		return nil, err
-	}
-
-	tasks.StartOnly(wg, postRun, done)
-	return stop, nil
+	return MustStart(done, tasks...)
 }
 
 type PreRunSlice []func(ap Appender) error
 type PostRunSlice []func()
 
 type Appender interface {
+	SliceGetter
 	AddTask(t ...Task) error
 	PostRun(f ...func())
-	Tasks() Slice
+	Context() context.Context
+	WithContext(ctx context.Context) (done func())
 }
 
 type PreRunCallback interface {
@@ -197,10 +115,23 @@ type TaskAppender struct {
 	tasks   Slice
 	setup   []func(ta Appender) error
 	postRun []func()
+	context context.Context
 }
 
-func (tasks *TaskAppender) Tasks() Slice {
-	return tasks.tasks
+func (ta *TaskAppender) Context() context.Context {
+	return ta.context
+}
+
+func (ta *TaskAppender) WithContext(ctx context.Context) (done func()) {
+	old := ta.context
+	ta.context = ctx
+	return func() {
+		ta.context = old
+	}
+}
+
+func (ta *TaskAppender) Tasks() Slice {
+	return ta.tasks
 }
 
 func (ta *TaskAppender) AddSetup(s ...func(ta Appender) error) {
@@ -221,9 +152,21 @@ func (ta *TaskAppender) Setup(tar Appender) (err error) {
 	return nil
 }
 
-func (ta *TaskAppender) AddTask(t ...Task) error {
-	ta.tasks = append(ta.tasks, t...)
-	return nil
+func (ta *TaskAppender) AddTask(t ...Task) (err error) {
+	for _, t := range t {
+		switch tt := t.(type) {
+		case Slice:
+			err = ta.AddTask(tt...)
+		case SliceGetter:
+			err = ta.AddTask(tt.Tasks()...)
+		default:
+			ta.tasks = append(ta.tasks, t)
+		}
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (ta *TaskAppender) PostRun(f ...func()) {
@@ -238,4 +181,8 @@ func (ta *TaskAppender) TaskPostRun() {
 
 func NewAppender() Appender {
 	return &TaskAppender{}
+}
+
+type SliceGetter interface {
+	Tasks() Slice
 }

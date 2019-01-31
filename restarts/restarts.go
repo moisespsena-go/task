@@ -8,13 +8,15 @@ import (
 	"github.com/moisespsena-go/task"
 )
 
+type Config = overseer.Config
+
 type SelfRestarter struct {
 	*task.Runner
 	SelfUpdater fetcher.Interface
 }
 
 func (r *SelfRestarter) Run() {
-	overseer.Run(overseer.Config{
+	overseer.Run(Config{
 		Fetcher: r.SelfUpdater,
 		Program: func(state overseer.State) {
 			if done, err := r.Runner.Run(); err != nil {
@@ -31,7 +33,7 @@ func New(t ...task.Task) *task.Runner {
 	return task.NewRunner(t...).SignalStop()
 }
 
-func RunConfig(r *task.Runner, cfg *overseer.Config) {
+func RunConfig(r *task.Runner, cfg *Config) {
 	if cfg == nil {
 		cfg = &overseer.Config{}
 	}
@@ -47,7 +49,7 @@ func RunConfig(r *task.Runner, cfg *overseer.Config) {
 }
 
 func RunUpdater(r *task.Runner, fetcher fetcher.Interface) {
-	RunConfig(r, &overseer.Config{Fetcher: fetcher})
+	RunConfig(r, &Config{Fetcher: fetcher})
 }
 
 func Run(r *task.Runner) {

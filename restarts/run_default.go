@@ -1,4 +1,4 @@
-// +build !github_com__moisespsena__task_restarter
+// +build !restartable
 
 package restarts
 

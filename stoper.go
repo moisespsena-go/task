@@ -13,7 +13,7 @@ func (s Stopers) IsRunning() bool {
 
 func (s Stopers) Stop() {
 	for _, s := range s {
-		if s.IsRunning() {
+		if s != nil && s.IsRunning() {
 			s.Stop()
 		}
 	}
@@ -51,9 +51,3 @@ func NewStopDoner(stop func()) (s Stoper, done func()) {
 		st.done = true
 	}
 }
-
-type FakeStoper struct{}
-
-func (FakeStoper) Stop() {}
-
-func (FakeStoper) IsRunning() bool { return false }

@@ -11,21 +11,13 @@ import (
 )
 
 type Runner struct {
-	tasks  []Task
-	stoper Stoper
-	log    *logging.Logger
+	Stoper
+	tasks Slice
+	log   *logging.Logger
 }
 
 func NewRunner(t ...Task) *Runner {
 	return &Runner{tasks: t}
-}
-
-func (r *Runner) Stop() {
-	r.stoper.Stop()
-}
-
-func (r *Runner) IsRunning() bool {
-	return r.stoper.IsRunning()
 }
 
 func (r *Runner) SetLog(log *logging.Logger) *Runner {
@@ -36,7 +28,18 @@ func (r *Runner) SetLog(log *logging.Logger) *Runner {
 func (r *Runner) Run() (done chan bool, err error) {
 	done = make(chan bool, 1)
 
-	if r.stoper, err = Start(func() { done <- true }, r.tasks...); err != nil {
+	if r.Stoper, err = Start(func(s *State) {
+		defer func() {
+			done <- true
+		}()
+		layout := "2006-01-02 15:04:05 Z07:00"
+		msg := fmt.Sprintf("Done: from `%v` to `%v` with %v duration.", s.Start.Format(layout), s.End.Format(layout), s.End.Sub(s.Start))
+		if r.log == nil {
+			fmt.Println(msg)
+		} else {
+			r.log.Notice(msg)
+		}
+	}, r.tasks...); err != nil {
 		return nil, errwrap.Wrap(err, "task start")
 	}
 	return
@@ -53,10 +56,10 @@ func (r *Runner) SignalStop(sig ...os.Signal) *Runner {
 		if r.log == nil {
 			fmt.Println("received signal:", sig)
 		} else {
-			r.log.Debug("received signal:", sig)
+			r.log.Notice("received signal:", sig)
 		}
-		if r.stoper != nil {
-			r.stoper.Stop()
+		if r.Stoper != nil {
+			r.Stoper.Stop()
 		}
 	}()
 	return r

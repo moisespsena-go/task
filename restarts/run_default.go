@@ -1,4 +1,4 @@
-// +build !restartable
+// +build !resettable
 
 package restarts
 

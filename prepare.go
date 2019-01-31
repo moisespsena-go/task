@@ -111,6 +111,11 @@ func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
 		Start:   now,
 	}
 
+	if len(items) == 0 {
+		p.End = time.Now()
+		go done()
+		return
+	}
 	go func() {
 		defer func() {
 			p.End = time.Now()

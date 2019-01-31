@@ -22,6 +22,9 @@ type appenderSetup struct {
 
 func (ap *appenderSetup) AddTask(t ...Task) (err error) {
 	for i, t := range t {
+		if t == nil {
+			continue
+		}
 		if err = t.Setup(ap); err != nil {
 			return errwrap.Wrap(err, &TaskSetupError{t, i, err})
 		}

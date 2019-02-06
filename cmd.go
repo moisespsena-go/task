@@ -11,11 +11,16 @@ type CmdTask struct {
 	Cmd      *exec.Cmd
 	Log      *logging.Logger
 	PreStart func(t *CmdTask)
-	OnDone   func()
+	onDone   []func()
 }
 
 func NewCmdTask(cmd *exec.Cmd) *CmdTask {
 	return &CmdTask{Cmd: cmd}
+}
+
+func (t *CmdTask) OnDone(f ...func()) *CmdTask {
+	t.onDone = append(t.onDone, f...)
+	return t
 }
 
 func (t *CmdTask) SetLog(log *logging.Logger) *CmdTask {
@@ -52,8 +57,8 @@ func (t *CmdTask) done() {
 		} else {
 			t.Log.Error(s)
 		}
-		if t.OnDone != nil {
-			t.OnDone()
+		for _, f := range t.onDone {
+			f()
 		}
 	}
 }

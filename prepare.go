@@ -127,6 +127,10 @@ func (s State) IsRunning() bool {
 	return false
 }
 
+func (s State) Len() int {
+	return len(s.taskStopers)
+}
+
 func (s State) Tasks() (tasks Slice) {
 	if s.taskStopers != nil {
 		for _, t := range s.taskStopers {

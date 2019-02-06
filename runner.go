@@ -55,7 +55,9 @@ func (r *Runner) RunWait() (err error) {
 }
 
 func (r *Runner) MustRunWait() {
-	log.Fatal(r.RunWait())
+	if err := r.RunWait(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (r *Runner) SigStop(sig ...os.Signal) *Runner {
@@ -89,5 +91,7 @@ func (r *Runner) SigRun(sig ...os.Signal) (err error) {
 }
 
 func (r *Runner) MustSigRun(sig ...os.Signal) {
-	log.Fatal(r.SigRun(sig...))
+	if err := r.SigRun(sig...); err != nil {
+		log.Fatal(err)
+	}
 }

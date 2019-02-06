@@ -62,7 +62,8 @@ func (r *Runner) MustRunWait() {
 
 func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 	if len(sig) == 0 {
-		sig = append(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR2)
+		sig = append(sig, syscall.SIGINT, syscall.SIGTERM)
+		sig = append(sig, runnner_signals...)
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, sig...)

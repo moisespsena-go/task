@@ -8,35 +8,102 @@ import (
 type taskStoper struct {
 	Task
 	Stoper
-	stopFunc func()
+	key      int64
+	doneChan chan int64
+	postRun  []func()
 }
 
-func (ts taskStoper) Stop() {
-	defer ts.stopFunc()
-	ts.Stoper.Stop()
+func (ts taskStoper) doneNotify() {
+	ts.doneChan <- ts.key
+	if pr, ok := ts.Task.(PostRunCallback); ok {
+		pr.TaskPosRun()
+	}
 }
 
 type State struct {
+	OnDoneEvent
 	Start       time.Time
 	End         time.Time
 	mu          sync.Mutex
+	i           int64
 	taskStopers map[interface{}]taskStoper
+	done        chan int64
 }
 
-func (s *State) AddTaskStoper(key interface{}, t Task, stop Stoper) (newStoper Stoper) {
+func (s *State) Add(tasks ...Task) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.taskStopers == nil {
 		s.taskStopers = map[interface{}]taskStoper{}
 	}
-	s.taskStopers[key] = taskStoper{t, s, func() {
-		delete(s.taskStopers, key)
-	}}
 
-	return s.taskStopers[key]
+	var (
+		items []taskStoper
+		add   func(tasks ...Task) (err error)
+		ta    = &TaskAppender{}
+		addt  = func(t Task) {
+			items = append(items, taskStoper{
+				Task:     t,
+				key:      s.i,
+				doneChan: s.done,
+			})
+			s.i++
+		}
+	)
+	add = func(tasks ...Task) (err error) {
+		for _, t := range tasks {
+			if f, ok := t.(Factory); ok {
+				t = f.Factory()
+				if pt, err := Prepare(t); err != nil {
+					return err
+				} else if err = add(pt.tasks...); err != nil {
+					return err
+				}
+			} else {
+				addt(t)
+			}
+		}
+		return
+	}
+
+	if err = add(tasks...); err != nil {
+		return
+	}
+
+	for _, t := range items {
+		if pr, ok := t.Task.(PreRunCallback); ok {
+			if err = pr.TaskPreRun(ta); err != nil {
+				return
+			}
+		}
+	}
+
+	for _, t := range ta.tasks {
+		addt(t)
+	}
+
+	for _, t := range items {
+		if stop, err := t.Start(t.doneNotify); err != nil {
+			s.Stop()
+			return err
+		} else if s != nil {
+			t.Stoper = stop
+			s.taskStopers[t.key] = t
+		}
+	}
+	return
 }
 
-func (s State) Stop() {
+func (s *State) Wait() {
+	for len(s.taskStopers) > 0 {
+		key := <-s.done
+		delete(s.taskStopers, key)
+	}
+	s.End = time.Now()
+	s.CallDoneFuncs()
+}
+
+func (s *State) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.taskStopers == nil {
@@ -100,87 +167,14 @@ func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
 		return
 	}
 
-	doneFuncs = append([]func(){}, doneFuncs...)
-
-	var (
-		wg    sync.WaitGroup
-		ta    = &TaskAppender{}
-		s     Stoper
-		t     Task
-		items Slice
-		now   = time.Now()
-
-		done = func() {
-			for _, d := range doneFuncs {
-				if d != nil {
-					d()
-				}
-			}
-		}
-
-		add func(tasks ...Task) (err error)
-	)
-
-	add = func(tasks ...Task) (err error) {
-		for _, t := range tasks {
-			if f, ok := t.(Factory); ok {
-				t = f.Factory()
-				if pt, err := Prepare(t); err != nil {
-					return err
-				} else if err = add(pt.tasks...); err != nil {
-					return err
-				}
-			} else {
-				items = append(items, t)
-			}
-		}
-		return
-	}
-
-	if err = add(pt.tasks...); err != nil {
-		return
-	}
-
-	for _, t = range items {
-		if pr, ok := t.(PreRunCallback); ok {
-			if err = pr.TaskPreRun(ta); err != nil {
-				return
-			}
-		}
-		if pr, ok := t.(PostRunCallback); ok {
-			doneFuncs = append(doneFuncs, pr.TaskPosRun)
-		}
-	}
-
-	items = append(items, ta.tasks...)
-	wg.Add(len(items))
-
 	p = &State{
-		Start: now,
+		Start: time.Now(),
+		done:  make(chan int64),
 	}
-
-	for i, t := range items {
-		if s, err = t.Start(wg.Done); err != nil {
-			p.Stop()
-			return
-		} else if s == nil {
-			wg.Done()
-		} else {
-			p.AddTaskStoper(i, t, s)
-		}
+	p.OnDone(doneFuncs...)
+	err = p.Add(pt.tasks...)
+	if err == nil {
+		go p.Wait()
 	}
-
-	if len(items) == 0 {
-		p.End = time.Now()
-		go done()
-		return
-	}
-	go func() {
-		defer func() {
-			p.End = time.Now()
-			done()
-		}()
-		wg.Wait()
-	}()
 	return
 }

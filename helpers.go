@@ -6,6 +6,26 @@ import (
 	"github.com/moisespsena/go-error-wrap"
 )
 
+type OnDoneEvent struct {
+	onDone []func()
+}
+
+func (od *OnDoneEvent) OnDone(f ...func()) {
+	od.onDone = append(od.onDone, f...)
+}
+
+func (od *OnDoneEvent) DoneFuncs() []func() {
+	return od.onDone
+}
+
+func (od *OnDoneEvent) CallDoneFuncs() {
+	for _, f := range od.onDone {
+		if f != nil {
+			f()
+		}
+	}
+}
+
 type TaskSetupError struct {
 	Task  Task
 	Index int

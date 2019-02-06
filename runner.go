@@ -11,13 +11,14 @@ import (
 )
 
 type Runner struct {
-	Stoper
+	*State
 	tasks Slice
 	log   *logging.Logger
+	*OnDoneEvent
 }
 
 func NewRunner(t ...Task) *Runner {
-	return &Runner{tasks: t}
+	return &Runner{tasks: t, OnDoneEvent: &OnDoneEvent{}}
 }
 
 func (r *Runner) SetLog(log *logging.Logger) *Runner {
@@ -27,8 +28,8 @@ func (r *Runner) SetLog(log *logging.Logger) *Runner {
 
 func (r *Runner) Run() (done chan interface{}, err error) {
 	done = make(chan interface{})
-
-	if r.Stoper, err = Start(func(s *State) {
+	var stop Stoper
+	if stop, err = Start(func(s *State) {
 		defer func() {
 			close(done)
 		}()
@@ -42,6 +43,9 @@ func (r *Runner) Run() (done chan interface{}, err error) {
 	}, r.tasks...); err != nil {
 		return nil, errwrap.Wrap(err, "task start")
 	}
+	r.State = stop.(*State)
+	r.State.OnDone(r.onDone...)
+	r.OnDoneEvent = &r.State.OnDoneEvent
 	return
 }
 
@@ -74,15 +78,24 @@ func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 		} else {
 			r.log.Notice("received signal:", sig)
 		}
-		if r.Stoper != nil {
-			r.Stoper.Stop()
+		if r.State != nil {
+			r.Stop()
 		}
 	}()
 	return r
 }
 
-func (r *Runner) SigRun(sig ...os.Signal) (err error) {
-	if done, err := r.Run(); err != nil {
+func (r *Runner) SigRun(sig ...os.Signal) (done chan interface{}, err error) {
+	if done, err = r.Run(); err != nil {
+		return nil, err
+	} else {
+		r.SigStop(sig...)
+	}
+	return
+}
+
+func (r *Runner) SigRunWait(sig ...os.Signal) (err error) {
+	if done, err := r.SigRun(); err != nil {
 		return err
 	} else {
 		r.SigStop(sig...)
@@ -92,7 +105,7 @@ func (r *Runner) SigRun(sig ...os.Signal) (err error) {
 }
 
 func (r *Runner) MustSigRun(sig ...os.Signal) {
-	if err := r.SigRun(sig...); err != nil {
+	if err := r.SigRunWait(sig...); err != nil {
 		log.Fatal(err)
 	}
 }

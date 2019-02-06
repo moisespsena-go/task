@@ -5,11 +5,77 @@ import (
 	"time"
 )
 
+type taskStoper struct {
+	Task
+	Stoper
+	stopFunc func()
+}
+
+func (ts taskStoper) Stop() {
+	defer ts.stopFunc()
+	ts.Stoper.Stop()
+}
+
 type State struct {
-	tasks   Slice
-	stopers Stopers
-	Start   time.Time
-	End     time.Time
+	Start       time.Time
+	End         time.Time
+	mu          sync.Mutex
+	taskStopers map[interface{}]taskStoper
+}
+
+func (s *State) AddTaskStoper(key interface{}, t Task, stop Stoper) (newStoper Stoper) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.taskStopers == nil {
+		s.taskStopers = map[interface{}]taskStoper{}
+	}
+	s.taskStopers[key] = taskStoper{t, s, func() {
+		delete(s.taskStopers, key)
+	}}
+
+	return s.taskStopers[key]
+}
+
+func (s State) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.taskStopers == nil {
+		return
+	}
+	for _, t := range s.taskStopers {
+		t.Stop()
+	}
+}
+
+func (s State) IsRunning() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.taskStopers != nil {
+		for _, v := range s.taskStopers {
+			if v.IsRunning() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (s State) Tasks() (tasks Slice) {
+	if s.taskStopers != nil {
+		for _, t := range s.taskStopers {
+			tasks = append(tasks, t)
+		}
+	}
+	return
+}
+
+func (s State) Stopers() (stopers Stopers) {
+	if s.taskStopers != nil {
+		for _, t := range s.taskStopers {
+			stopers = append(stopers, t)
+		}
+	}
+	return
 }
 
 type PreparedTasks struct {
@@ -37,8 +103,6 @@ func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
 	doneFuncs = append([]func(){}, doneFuncs...)
 
 	var (
-		ts    Slice
-		stop  Stopers
 		wg    sync.WaitGroup
 		ta    = &TaskAppender{}
 		s     Stoper
@@ -91,24 +155,19 @@ func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
 	items = append(items, ta.tasks...)
 	wg.Add(len(items))
 
-	for _, t = range items {
+	p = &State{
+		Start: now,
+	}
+
+	for i, t := range items {
 		if s, err = t.Start(wg.Done); err != nil {
-			for _, s = range stop {
-				s.Stop()
-			}
+			p.Stop()
 			return
 		} else if s == nil {
 			wg.Done()
 		} else {
-			ts = append(ts, t)
-			stop = append(stop, s)
+			p.AddTaskStoper(i, t, s)
 		}
-	}
-
-	p = &State{
-		tasks:   items,
-		stopers: stop,
-		Start:   now,
 	}
 
 	if len(items) == 0 {
@@ -124,20 +183,4 @@ func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
 		wg.Wait()
 	}()
 	return
-}
-
-func (t State) Stop() {
-	t.stopers.Stop()
-}
-
-func (t State) IsRunning() bool {
-	return t.stopers.IsRunning()
-}
-
-func (t State) Tasks() Slice {
-	return t.tasks
-}
-
-func (t State) Stopers() Stopers {
-	return t.stopers
 }

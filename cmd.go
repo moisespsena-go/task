@@ -11,6 +11,7 @@ type CmdTask struct {
 	Cmd      *exec.Cmd
 	Log      *logging.Logger
 	PreStart func(t *CmdTask)
+	OnDone   func()
 }
 
 func NewCmdTask(cmd *exec.Cmd) *CmdTask {
@@ -50,6 +51,9 @@ func (t *CmdTask) done() {
 			t.Log.Debug(s)
 		} else {
 			t.Log.Error(s)
+		}
+		if t.OnDone != nil {
+			t.OnDone()
 		}
 	}
 }

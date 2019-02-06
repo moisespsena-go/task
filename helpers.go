@@ -42,12 +42,13 @@ func MustRun(done func(), t ...Task) error {
 	}
 	d := make(chan interface{})
 	if _, err = pt.Start(func() {
-		d <- nil
-		done()
+		close(d)
+		if done != nil {
+			done()
+		}
 	}); err == nil {
 		<-d
 	}
-	close(d)
 	return err
 }
 
@@ -68,7 +69,9 @@ func Start(done func(state *State), t ...Task) (s Stoper, err error) {
 	}
 	var state *State
 	state, err = pt.Start(func() {
-		done(state)
+		if done != nil {
+			done(state)
+		}
 	})
 	s = state
 	return
@@ -84,11 +87,12 @@ func Run(done func(state *State), t ...Task) (err error) {
 	var state *State
 	d := make(chan interface{})
 	if state, err = pt.Start(func() {
-		d <- nil
-		done(state)
+		close(d)
+		if done != nil {
+			done(state)
+		}
 	}); err == nil {
 		<-d
 	}
-	close(d)
 	return
 }

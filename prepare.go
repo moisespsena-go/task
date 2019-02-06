@@ -28,6 +28,7 @@ type State struct {
 	i           int64
 	taskStopers map[interface{}]taskStoper
 	done        chan int64
+	stopCalled  bool
 }
 
 func (s *State) Add(tasks ...Task) (err error) {
@@ -104,8 +105,12 @@ func (s *State) Wait() {
 }
 
 func (s *State) Stop() {
+	if s.stopCalled {
+		return
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.stopCalled = true
 	if s.taskStopers == nil {
 		return
 	}

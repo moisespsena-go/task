@@ -25,12 +25,12 @@ func (r *Runner) SetLog(log *logging.Logger) *Runner {
 	return r
 }
 
-func (r *Runner) Run() (done chan bool, err error) {
-	done = make(chan bool, 1)
+func (r *Runner) Run() (done chan interface{}, err error) {
+	done = make(chan interface{})
 
 	if r.Stoper, err = Start(func(s *State) {
 		defer func() {
-			done <- true
+			close(done)
 		}()
 		layout := "2006-01-02 15:04:05 Z07:00"
 		msg := fmt.Sprintf("Done: from `%v` to `%v` with %v duration.", s.Start.Format(layout), s.End.Format(layout), s.End.Sub(s.Start))
@@ -45,7 +45,20 @@ func (r *Runner) Run() (done chan bool, err error) {
 	return
 }
 
-func (r *Runner) SignalStop(sig ...os.Signal) *Runner {
+func (r *Runner) RunWait() (err error) {
+	if done, err := r.Run(); err != nil {
+		return err
+	} else {
+		<-done
+	}
+	return
+}
+
+func (r *Runner) MustRunWait() {
+	log.Fatal(r.RunWait())
+}
+
+func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 	if len(sig) == 0 {
 		sig = append(sig, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR2)
 	}
@@ -63,4 +76,18 @@ func (r *Runner) SignalStop(sig ...os.Signal) *Runner {
 		}
 	}()
 	return r
+}
+
+func (r *Runner) SigRun(sig ...os.Signal) (err error) {
+	if done, err := r.Run(); err != nil {
+		return err
+	} else {
+		r.SigStop(sig...)
+		<-done
+	}
+	return
+}
+
+func (r *Runner) MustSigRun(sig ...os.Signal) {
+	log.Fatal(r.SigRun(sig...))
 }

@@ -30,7 +30,7 @@ func (r *SelfRestarter) Run() {
 }
 
 func New(t ...task.Task) *task.Runner {
-	return task.NewRunner(t...).SignalStop()
+	return task.NewRunner(t...).SigStop()
 }
 
 func RunConfig(r *task.Runner, cfg *Config) {

@@ -53,9 +53,9 @@ func (t *CmdTask) preStart() {
 func (t *CmdTask) done() {
 	if t.Cmd.ProcessState != nil {
 		if s := t.Cmd.ProcessState; s.Success() {
-			t.Log.Debug(s)
+			t.Log.Debug(s.String())
 		} else {
-			t.Log.Error(s)
+			t.Log.Error(s.String())
 		}
 		for _, f := range t.onDone {
 			f()

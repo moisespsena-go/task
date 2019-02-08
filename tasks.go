@@ -90,9 +90,9 @@ func (tasks *Tasks) Start(done func()) (stop Stoper, err error) {
 		done()
 	}); err != nil {
 		if tasks.log != nil {
-			tasks.log.Error(err)
+			tasks.log.Error(err.Error())
 		} else {
-			log.Error(err)
+			log.Error(err.Error())
 		}
 	}
 	return

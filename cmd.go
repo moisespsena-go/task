@@ -2,6 +2,8 @@ package task
 
 import (
 	"os/exec"
+	"strconv"
+	"strings"
 
 	"github.com/moisespsena/go-default-logger"
 	"github.com/op/go-logging"
@@ -33,9 +35,13 @@ func (t *CmdTask) Setup(appender Appender) error {
 }
 
 func (t *CmdTask) LogInfo() {
-	t.Log.Debug("Args:", t.Cmd.Args[1:])
+	var args = []string{t.Cmd.Args[0]}
+	for _, arg := range t.Cmd.Args[1:] {
+		args = append(args, strconv.Quote(arg))
+	}
+	t.Log.Debug("Args: " + strings.Join(args, " "))
 	if t.Cmd.Dir != "" {
-		t.Log.Debug("Dir:", t.Cmd.Dir)
+		t.Log.Debug("Dir: " + t.Cmd.Dir)
 	}
 }
 

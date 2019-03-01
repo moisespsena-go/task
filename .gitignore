@@ -13,3 +13,6 @@
 
 # Hidden files
 .*
+
+# Vendor
+vendor

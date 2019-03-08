@@ -5,6 +5,14 @@ import (
 	"time"
 )
 
+type PreStartCallback interface {
+	PreTaskStart(s *State)
+}
+
+type PostStartCallback interface {
+	PostTaskStart(s *State)
+}
+
 type taskStoper struct {
 	Task
 	Stoper
@@ -84,12 +92,20 @@ func (s *State) Add(tasks ...Task) (err error) {
 	}
 
 	for _, t := range items {
+		if cb, ok := t.Task.(PreStartCallback); ok {
+			cb.PreTaskStart(s)
+		}
+
 		if stop, err := t.Start(t.doneNotify); err != nil {
 			s.Stop()
 			return err
 		} else if s != nil {
 			t.Stoper = stop
 			s.taskStopers[t.key] = t
+
+			if cb, ok := t.Task.(PostStartCallback); ok {
+				cb.PostTaskStart(s)
+			}
 		}
 	}
 	return

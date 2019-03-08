@@ -78,7 +78,7 @@ func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 		if r.log == nil {
 			fmt.Println("received signal:", sig)
 		} else {
-			r.log.Notice("received signal:", sig)
+			r.log.Notice("received signal: %v", sig)
 		}
 		if r.State != nil {
 			r.Stop()

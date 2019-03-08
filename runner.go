@@ -10,6 +10,14 @@ import (
 	"github.com/op/go-logging"
 )
 
+type PreStartCallback interface {
+	PreTaskStart(r *Runner)
+}
+
+type PostStartCallback interface {
+	PostTaskStart(r *Runner)
+}
+
 type Runner struct {
 	*State
 	tasks Slice
@@ -29,6 +37,13 @@ func (r *Runner) SetLog(log *logging.Logger) *Runner {
 func (r *Runner) Run() (done chan interface{}, err error) {
 	done = make(chan interface{})
 	var stop Stoper
+
+	for _, t := range r.tasks {
+		if s, ok := t.(PreStartCallback); ok {
+			s.PreTaskStart(r)
+		}
+	}
+
 	if stop, err = Start(func(s *State) {
 		defer func() {
 			close(done)
@@ -43,9 +58,16 @@ func (r *Runner) Run() (done chan interface{}, err error) {
 	}, r.tasks...); err != nil {
 		return nil, errwrap.Wrap(err, "task start")
 	}
+
 	r.State = stop.(*State)
 	r.State.OnDone(r.onDone...)
 	r.OnDoneEvent = &r.State.OnDoneEvent
+
+	for _, t := range r.tasks {
+		if s, ok := t.(PostStartCallback); ok {
+			s.PostTaskStart(r)
+		}
+	}
 	return
 }
 

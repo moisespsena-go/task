@@ -70,6 +70,10 @@ func (tasks *Tasks) copyAppender() *TaskAppender {
 	}
 }
 
+func (tasks *Tasks) GetPreRun() []func(ta Appender) error {
+	return tasks.preRun
+}
+
 func (tasks *Tasks) Run() (err error) {
 	ts := tasks.copyAppender()
 	if err = tasks.TaskPreRun(ts); err != nil {

@@ -100,7 +100,6 @@ func (r *Runner) SigRunWait(sig ...os.Signal) (err error) {
 	if done, err := r.SigRun(); err != nil {
 		return err
 	} else {
-		r.SigStop(sig...)
 		<-done
 	}
 	return

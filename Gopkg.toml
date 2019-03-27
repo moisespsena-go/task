@@ -27,15 +27,15 @@
 
 [[constraint]]
   branch = "master"
-  name = "github.com/moisespsena/go-default-logger"
+  name = "github.com/moisespsena-go/default-logger"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/moisespsena/go-error-wrap"
+  name = "github.com/moisespsena-go/error-wrap"
 
 [[constraint]]
   branch = "master"
-  name = "github.com/moisespsena/go-path-helpers"
+  name = "github.com/moisespsena-go/path-helpers"
 
 [[constraint]]
   name = "github.com/op/go-logging"
@@ -44,8 +44,3 @@
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  branch = "crontab"
-  name = "github.com/jpillora/overseer"
-  source = "github.com/moisespsena-go/overseer"

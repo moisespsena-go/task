@@ -3,8 +3,8 @@ package task
 import (
 	"errors"
 
-	"github.com/moisespsena/go-default-logger"
-	"github.com/moisespsena/go-path-helpers"
+	"github.com/moisespsena-go/default-logger"
+	"github.com/moisespsena-go/path-helpers"
 )
 
 var (

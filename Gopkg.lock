@@ -36,7 +36,7 @@
 [[projects]]
   branch = "master"
   digest = "1:9503135a30a108890c68d15a4bed816a4d2a4058f7d7ea136d516b19966d2c02"
-  name = "github.com/moisespsena/go-error-wrap"
+  name = "github.com/moisespsena-go/error-wrap"
   packages = ["."]
   pruneopts = "UT"
   revision = "7e8df00a35080dff30e766ff640b1be4e7870304"

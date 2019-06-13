@@ -76,9 +76,9 @@ func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 	go func() {
 		sig := <-sigs
 		if r.log == nil {
-			fmt.Println("received signal:", sig)
+			fmt.Println("received signal:", sig.String())
 		} else {
-			r.log.Notice("received signal: %v", sig)
+			r.log.Notice("received signal:", sig.String())
 		}
 		if r.State != nil {
 			r.Stop()

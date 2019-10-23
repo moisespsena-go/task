@@ -19,6 +19,18 @@ func (s Stopers) Stop() {
 	}
 }
 
+func (s *Stopers) IsRunningOrRemove() (ok bool) {
+	var new Stopers
+	for _, s := range *s {
+		if !s.IsRunning() {
+			continue
+		}
+		new = append(new, s)
+	}
+	*s = new
+	return len(new) > 0
+}
+
 type Stoper interface {
 	Stop()
 	IsRunning() bool

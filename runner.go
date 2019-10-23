@@ -1,7 +1,6 @@
 package task
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,12 +18,20 @@ type Runner struct {
 }
 
 func NewRunner(t ...Task) *Runner {
-	return &Runner{tasks: t, OnDoneEvent: &OnDoneEvent{}}
+	return &Runner{
+		tasks:       t,
+		log:         logging.WithPrefix(log, "Runner"),
+		OnDoneEvent: &OnDoneEvent{},
+	}
 }
 
 func (r *Runner) SetLog(log logging.Logger) *Runner {
 	r.log = log
 	return r
+}
+
+func (this *Runner) GetLogger() logging.Logger {
+	return this.log
 }
 
 func (r *Runner) Run() (done chan interface{}, err error) {
@@ -36,12 +43,8 @@ func (r *Runner) Run() (done chan interface{}, err error) {
 			close(done)
 		}()
 		layout := "2006-01-02 15:04:05 Z07:00"
-		msg := fmt.Sprintf("Done: from `%v` to `%v` with %v duration.", s.Start.Format(layout), s.End.Format(layout), s.End.Sub(s.Start))
-		if r.log == nil {
-			fmt.Println(msg)
-		} else {
-			r.log.Notice(msg)
-		}
+		r.log.Noticef("Done: from `%v` to `%v` with %v duration.",
+			s.Start.Format(layout), s.End.Format(layout), s.End.Sub(s.Start))
 	}, r.tasks...); err != nil {
 		return nil, errwrap.Wrap(err, "task start")
 	}
@@ -76,11 +79,7 @@ func (r *Runner) SigStop(sig ...os.Signal) *Runner {
 	signal.Notify(sigs, sig...)
 	go func() {
 		sig := <-sigs
-		if r.log == nil {
-			fmt.Println("received signal:", sig.String())
-		} else {
-			r.log.Notice("received signal:", sig.String())
-		}
+		r.log.Notice("received signal:", sig.String())
 		if r.State != nil {
 			r.Stop()
 		}

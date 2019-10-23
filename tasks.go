@@ -3,7 +3,7 @@ package task
 import (
 	"context"
 
-	"github.com/op/go-logging"
+	"github.com/moisespsena-go/logging"
 )
 
 type Slice []Task
@@ -46,16 +46,16 @@ type PostRunCallback interface {
 
 type Tasks struct {
 	TaskAppender
-	log          *logging.Logger
+	log          logging.Logger
 	preRun       []func(ta Appender) error
 	preRunCalled bool
 }
 
-func (tasks *Tasks) Log() *logging.Logger {
+func (tasks *Tasks) Log() logging.Logger {
 	return tasks.log
 }
 
-func (tasks *Tasks) SetLog(log *logging.Logger) {
+func (tasks *Tasks) SetLog(log logging.Logger) {
 	tasks.log = log
 }
 

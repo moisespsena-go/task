@@ -10,7 +10,7 @@ import (
 var (
 	pkg            = path_helpers.GetCalledDir()
 	ErrTaskRunning = errors.New("Task is running")
-	log            = defaultlogger.NewLogger(pkg)
+	log            = defaultlogger.GetOrCreateLogger(pkg)
 )
 
 type Task interface {

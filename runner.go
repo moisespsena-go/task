@@ -6,14 +6,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/moisespsena-go/error-wrap"
-	"github.com/op/go-logging"
+	errwrap "github.com/moisespsena-go/error-wrap"
+
+	"github.com/moisespsena-go/logging"
 )
 
 type Runner struct {
 	*State
 	tasks Slice
-	log   *logging.Logger
+	log   logging.Logger
 	*OnDoneEvent
 }
 
@@ -21,7 +22,7 @@ func NewRunner(t ...Task) *Runner {
 	return &Runner{tasks: t, OnDoneEvent: &OnDoneEvent{}}
 }
 
-func (r *Runner) SetLog(log *logging.Logger) *Runner {
+func (r *Runner) SetLog(log logging.Logger) *Runner {
 	r.log = log
 	return r
 }

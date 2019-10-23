@@ -5,13 +5,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/moisespsena-go/default-logger"
-	"github.com/op/go-logging"
+	defaultlogger "github.com/moisespsena-go/default-logger"
+	"github.com/moisespsena-go/logging"
 )
 
 type CmdTask struct {
 	Cmd      *exec.Cmd
-	Log      *logging.Logger
+	Log      logging.Logger
 	PreStart func(t *CmdTask)
 	onDone   []func()
 }
@@ -25,7 +25,7 @@ func (t *CmdTask) OnDone(f ...func()) *CmdTask {
 	return t
 }
 
-func (t *CmdTask) SetLog(log *logging.Logger) *CmdTask {
+func (t *CmdTask) SetLog(log logging.Logger) *CmdTask {
 	t.Log = log
 	return t
 }
@@ -47,7 +47,7 @@ func (t *CmdTask) LogInfo() {
 
 func (t *CmdTask) preStart() {
 	if t.Log == nil {
-		t.Log = defaultlogger.NewLogger("CMD: " + t.Cmd.Path)
+		t.Log = defaultlogger.GetOrCreateLogger("CMD: " + t.Cmd.Path)
 	}
 	if t.PreStart == nil {
 		t.LogInfo()

@@ -3,7 +3,7 @@ package task
 import (
 	"fmt"
 
-	"github.com/moisespsena-go/error-wrap"
+	errwrap "github.com/moisespsena-go/error-wrap"
 )
 
 type OnDoneEvent struct {
@@ -115,4 +115,14 @@ func Run(done func(state *State), t ...Task) (err error) {
 		<-d
 	}
 	return
+}
+
+func SigRun(t ...Task) (err error) {
+	return NewRunner(t...).SigRunWait()
+}
+
+func MustSigRun(t ...Task) {
+	if err := SigRun(t...); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -3,8 +3,8 @@ package task
 import (
 	"errors"
 
-	"github.com/moisespsena-go/default-logger"
-	"github.com/moisespsena-go/path-helpers"
+	defaultlogger "github.com/moisespsena-go/default-logger"
+	path_helpers "github.com/moisespsena-go/path-helpers"
 )
 
 var (
@@ -77,34 +77,6 @@ func NewTask(run func() (err error), stop ...func()) *task {
 		stopf = stop[0]
 	}
 	return &task{RunFunc: run, StopFunc: stopf}
-}
-
-type TaskProxy struct {
-	T         Task
-	SetupFunc func(appender Appender) error
-	RunFunc   func() error
-	StartFunc func(done func()) (stop Stoper, err error)
-}
-
-func (px *TaskProxy) Setup(appender Appender) error {
-	if px.SetupFunc != nil {
-		return px.SetupFunc(appender)
-	}
-	return nil
-}
-
-func (px *TaskProxy) Run() error {
-	if px.RunFunc != nil {
-		return px.RunFunc()
-	}
-	return nil
-}
-
-func (px *TaskProxy) Start(done func()) (stop Stoper, err error) {
-	if px.StartFunc != nil {
-		return px.StartFunc(done)
-	}
-	return
 }
 
 type TaskSetup func(appender Appender) error

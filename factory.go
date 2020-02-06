@@ -17,12 +17,25 @@ func (f *TaskFactory) getTask() Task {
 	return f.task
 }
 
-func (f *TaskFactory) Setup(appender Appender) error {
-	return f.getTask().Setup(appender)
+func (f *TaskFactory) Setup(appender Appender) (err error) {
+	return setup(appender, func(t ...Task) error {
+		return nil
+	}, f.getTask())
 }
 
-func (f *TaskFactory) Run() error {
-	return f.getTask().Run()
+func (f *TaskFactory) Run() (err error) {
+	t := f.getTask()
+	if runer, ok := t.(TaskRunner); ok {
+		return runer.Run()
+	}
+	done := make(chan struct{})
+	if _, err = t.Start(func() {
+		close(done)
+	}); err != nil {
+		return
+	}
+	<-done
+	return
 }
 
 func (f *TaskFactory) Start(done func()) (stop Stoper, err error) {

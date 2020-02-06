@@ -36,23 +36,37 @@ func (se TaskSetupError) Error() string {
 	return fmt.Sprintf("Task #%d %s setup failed", se.Index, se.Task)
 }
 
-type appenderSetup struct {
-	Appender
-}
-
-func (ap *appenderSetup) AddTask(t ...Task) (err error) {
+func setup(appender Appender, add func(t ...Task)error, t ...Task) (err error) {
+	if add == nil {
+		add = appender.AddTask
+	}
 	for i, t := range t {
 		if t == nil {
 			continue
 		}
-		if err = t.Setup(ap); err != nil {
-			return errwrap.Wrap(err, &TaskSetupError{t, i, err})
+		switch s := t.(type) {
+		case TaskSetuper:
+			if err = s.Setup(); err != nil {
+				return errwrap.Wrap(err, &TaskSetupError{t, i, err})
+			}
+		case TaskSetupAppender:
+			if err = s.Setup(appender); err != nil {
+				return errwrap.Wrap(err, &TaskSetupError{t, i, err})
+			}
 		}
-		if err = ap.Appender.AddTask(t); err != nil {
+		if err = add(t); err != nil {
 			return errwrap.Wrap(err, "Add task %d", i)
 		}
 	}
 	return
+}
+
+type appenderSetup struct {
+	Appender
+}
+
+func (this *appenderSetup) AddTask(t ...Task) (err error) {
+	return setup(this, this.Appender.AddTask, t...)
 }
 
 func MustRun(done func(), t ...Task) error {

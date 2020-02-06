@@ -16,8 +16,8 @@ type PostStartCallback interface {
 type taskStoper struct {
 	Task
 	Stoper
-	key      int64
-	doneChan chan int64
+	key      uint64
+	doneChan chan uint64
 	postRun  []func()
 }
 
@@ -33,9 +33,9 @@ type State struct {
 	Start       time.Time
 	End         time.Time
 	mu          sync.Mutex
-	i           int64
+	i           uint64
 	taskStopers map[interface{}]taskStoper
-	done        chan int64
+	done        chan uint64
 	stopCalled  bool
 }
 
@@ -174,8 +174,8 @@ type PreparedTasks struct {
 	tasks Slice
 }
 
-func (pt *PreparedTasks) Tasks() Slice {
-	return pt.tasks
+func (this *PreparedTasks) Tasks() Slice {
+	return this.tasks
 }
 
 func Prepare(t ...Task) (pt *PreparedTasks, err error) {
@@ -187,19 +187,19 @@ func Prepare(t ...Task) (pt *PreparedTasks, err error) {
 	return
 }
 
-func (pt *PreparedTasks) Start(doneFuncs ...func()) (p *State, err error) {
-	if len(pt.tasks) == 0 {
+func (this *PreparedTasks) Start(done ...func()) (state *State, err error) {
+	if len(this.tasks) == 0 {
 		return
 	}
 
-	p = &State{
+	state = &State{
 		Start: time.Now(),
-		done:  make(chan int64),
+		done:  make(chan uint64),
 	}
-	p.OnDone(doneFuncs...)
-	err = p.Add(pt.tasks...)
+	state.OnDone(done...)
+	err = state.Add(this.tasks...)
 	if err == nil {
-		go p.Wait()
+		go state.Wait()
 	}
 	return
 }

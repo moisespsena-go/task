@@ -10,8 +10,14 @@ type Slice []Task
 
 func (tasks Slice) Setup(appender Appender) (err error) {
 	for _, t := range tasks {
-		if err = t.Setup(appender); err != nil {
-			return
+		if s, ok := t.(TaskSetupAppender); ok {
+			if err = s.Setup(appender); err != nil {
+				return
+			}
+		} else if s, ok := t.(TaskSetuper); ok {
+			if err = s.Setup(); err != nil {
+				return
+			}
 		}
 	}
 	return nil
@@ -122,49 +128,46 @@ type TaskAppender struct {
 	context context.Context
 }
 
-func (ta *TaskAppender) Context() context.Context {
-	return ta.context
+func (this *TaskAppender) Context() context.Context {
+	return this.context
 }
 
-func (ta *TaskAppender) WithContext(ctx context.Context) (done func()) {
-	old := ta.context
-	ta.context = ctx
+func (this *TaskAppender) WithContext(ctx context.Context) (done func()) {
+	old := this.context
+	this.context = ctx
 	return func() {
-		ta.context = old
+		this.context = old
 	}
 }
 
-func (ta *TaskAppender) Tasks() Slice {
-	return ta.tasks
+func (this *TaskAppender) Tasks() Slice {
+	return this.tasks
 }
 
-func (ta *TaskAppender) AddSetup(s ...func(ta Appender) error) {
-	ta.setup = append(ta.setup, s...)
+func (this *TaskAppender) AddSetup(s ...func(ta Appender) error) {
+	this.setup = append(this.setup, s...)
 }
 
-func (ta *TaskAppender) Setup(tar Appender) (err error) {
-	for _, s := range ta.setup {
+func (this *TaskAppender) Setup(tar Appender) (err error) {
+	for _, s := range this.setup {
 		if err = s(tar); err != nil {
 			return
 		}
 	}
-	for _, t := range ta.tasks {
-		if err = t.Setup(tar); err != nil {
-			return
-		}
-	}
-	return nil
+	return setup(this, func(t ...Task) error {
+		return nil
+	}, this.tasks...)
 }
 
-func (ta *TaskAppender) AddTask(t ...Task) (err error) {
+func (this *TaskAppender) AddTask(t ...Task) (err error) {
 	for _, t := range t {
 		switch tt := t.(type) {
 		case Slice:
-			err = ta.AddTask(tt...)
+			err = this.AddTask(tt...)
 		case SliceGetter:
-			err = ta.AddTask(tt.Tasks()...)
+			err = this.AddTask(tt.Tasks()...)
 		default:
-			ta.tasks = append(ta.tasks, t)
+			this.tasks = append(this.tasks, t)
 		}
 		if err != nil {
 			return
@@ -173,12 +176,12 @@ func (ta *TaskAppender) AddTask(t ...Task) (err error) {
 	return
 }
 
-func (ta *TaskAppender) PostRun(f ...func()) {
-	ta.postRun = append(ta.postRun, f...)
+func (this *TaskAppender) PostRun(f ...func()) {
+	this.postRun = append(this.postRun, f...)
 }
 
-func (ta *TaskAppender) TaskPostRun() {
-	for _, pr := range ta.postRun {
+func (this *TaskAppender) TaskPostRun() {
+	for _, pr := range this.postRun {
 		pr()
 	}
 }

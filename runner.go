@@ -55,6 +55,14 @@ func (r *Runner) Run() (done chan interface{}, err error) {
 	return
 }
 
+func (r *Runner) Add(t ...Task) (err error) {
+	var prepared *PreparedTasks
+	if prepared, err = Prepare(t...); err != nil {
+		return
+	}
+	return r.State.Add(prepared.tasks...)
+}
+
 func (r *Runner) RunWait() (err error) {
 	if done, err := r.Run(); err != nil {
 		return err

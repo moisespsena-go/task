@@ -13,9 +13,19 @@ var (
 	log            = defaultlogger.GetOrCreateLogger(pkg)
 )
 
-type Task interface {
+type TaskSetupAppender interface {
 	Setup(appender Appender) error
+}
+
+type TaskSetuper interface {
+	Setup() error
+}
+
+type TaskRunner interface {
 	Run() error
+}
+
+type Task interface {
 	Start(done func()) (stop Stoper, err error)
 }
 

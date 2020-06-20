@@ -3,6 +3,8 @@ package task
 import (
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 type PreStartCallback interface {
@@ -34,7 +36,7 @@ type State struct {
 	End         time.Time
 	mu          sync.Mutex
 	i           uint64
-	taskStopers map[interface{}]taskStoper
+	taskStopers map[interface{}]*taskStoper
 	done        chan uint64
 	stopCalled  bool
 }
@@ -43,15 +45,15 @@ func (s *State) Add(tasks ...Task) (err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.taskStopers == nil {
-		s.taskStopers = map[interface{}]taskStoper{}
+		s.taskStopers = map[interface{}]*taskStoper{}
 	}
 
 	var (
-		items []taskStoper
+		items []*taskStoper
 		add   func(tasks ...Task) (err error)
 		ta    = &TaskAppender{}
 		addt  = func(t Task) {
-			items = append(items, taskStoper{
+			items = append(items, &taskStoper{
 				Task:     t,
 				key:      s.i,
 				doneChan: s.done,
@@ -97,15 +99,18 @@ func (s *State) Add(tasks ...Task) (err error) {
 		}
 
 		if stop, err := t.Start(t.doneNotify); err != nil {
-			s.Stop()
+			s.stop()
 			return err
-		} else if s != nil {
+		} else if validStoper(stop) {
 			t.Stoper = stop
 			s.taskStopers[t.key] = t
 
 			if cb, ok := t.Task.(PostStartCallback); ok {
 				cb.PostTaskStart(s)
 			}
+		} else {
+			s.stop()
+			return &ErrNotRunning{t}
 		}
 	}
 	return
@@ -120,6 +125,19 @@ func (s *State) Wait() {
 	s.CallDoneFuncs()
 }
 
+func (s *State) stop() {
+	var newStoppers = map[interface{}]*taskStoper{}
+	for k, t := range s.taskStopers {
+		if t.IsRunning() {
+			t.Stop()
+			if t.IsRunning() {
+				newStoppers[k] = t
+			}
+		}
+	}
+	s.taskStopers = newStoppers
+}
+
 func (s *State) Stop() {
 	if s.stopCalled {
 		return
@@ -130,8 +148,22 @@ func (s *State) Stop() {
 	if s.taskStopers == nil {
 		return
 	}
-	for _, t := range s.taskStopers {
-		t.Stop()
+	s.stop()
+}
+
+func (s *State) StopWait() {
+	if s.stopCalled {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.stopCalled = true
+	if s.taskStopers == nil {
+		return
+	}
+	for len(s.taskStopers) > 0 {
+		s.stop()
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -179,6 +211,9 @@ func (this *PreparedTasks) Tasks() Slice {
 }
 
 func Prepare(t ...Task) (pt *PreparedTasks, err error) {
+	if len(t) == 0 {
+		return nil, errors.Wrap(ErrNoTasks, "prepare")
+	}
 	appender := appenderSetup{NewAppender()}
 	if err = appender.AddTask(t...); err != nil {
 		return
@@ -188,18 +223,14 @@ func Prepare(t ...Task) (pt *PreparedTasks, err error) {
 }
 
 func (this *PreparedTasks) Start(done ...func()) (state *State, err error) {
-	if len(this.tasks) == 0 {
-		return
-	}
-
 	state = &State{
 		Start: time.Now(),
 		done:  make(chan uint64),
 	}
 	state.OnDone(done...)
-	err = state.Add(this.tasks...)
-	if err == nil {
-		go state.Wait()
+	if err = state.Add(this.tasks...); err != nil {
+		return
 	}
+	go state.Wait()
 	return
 }

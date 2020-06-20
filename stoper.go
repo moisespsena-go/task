@@ -63,3 +63,7 @@ func NewStopDoner(stop func()) (s Stoper, done func()) {
 		st.done = true
 	}
 }
+
+type StopWaiter interface {
+	StopWait()
+}

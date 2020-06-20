@@ -2,6 +2,7 @@ package task
 
 import (
 	"fmt"
+	"time"
 
 	errwrap "github.com/moisespsena-go/error-wrap"
 )
@@ -33,10 +34,10 @@ type TaskSetupError struct {
 }
 
 func (se TaskSetupError) Error() string {
-	return fmt.Sprintf("Task #%d %s setup failed", se.Index, se.Task)
+	return fmt.Sprintf("Task #%d %T setup failed", se.Index, se.Task)
 }
 
-func setup(appender Appender, add func(t ...Task)error, t ...Task) (err error) {
+func setup(appender Appender, add func(t ...Task) error, t ...Task) (err error) {
 	if add == nil {
 		add = appender.AddTask
 	}
@@ -97,16 +98,17 @@ func MustStart(done func(), t ...Task) (s Stoper, err error) {
 
 func Start(done func(state *State), t ...Task) (s Stoper, err error) {
 	var pt *PreparedTasks
-	pt, err = Prepare(t...)
-	if err != nil {
+	if pt, err = Prepare(t...); err != nil {
 		return
 	}
 	var state *State
-	state, err = pt.Start(func() {
+	if state, err = pt.Start(func() {
 		if done != nil {
 			done(state)
 		}
-	})
+	}); err != nil {
+		return
+	}
 	s = state
 	return
 }
@@ -131,12 +133,14 @@ func Run(done func(state *State), t ...Task) (err error) {
 	return
 }
 
-func SigRun(t ...Task) (err error) {
-	return NewRunner(t...).SigRunWait()
-}
+func StopWait(stoper Stoper) {
+	if sw, ok := stoper.(StopWaiter); ok {
+		sw.StopWait()
+		return
+	}
 
-func MustSigRun(t ...Task) {
-	if err := SigRun(t...); err != nil {
-		log.Fatal(err)
+	for stoper.IsRunning() {
+		stoper.Stop()
+		time.Sleep(100 * time.Millisecond)
 	}
 }

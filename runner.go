@@ -2,10 +2,9 @@ package task
 
 import (
 	"os"
-	"os/signal"
-	"syscall"
 
 	errwrap "github.com/moisespsena-go/error-wrap"
+	"github.com/moisespsena-go/signald"
 
 	"github.com/moisespsena-go/logging"
 )
@@ -15,6 +14,7 @@ type Runner struct {
 	tasks Slice
 	log   logging.Logger
 	*OnDoneEvent
+	Signal os.Signal
 }
 
 func NewRunner(t ...Task) *Runner {
@@ -48,7 +48,6 @@ func (r *Runner) Run() (done chan interface{}, err error) {
 	}, r.tasks...); err != nil {
 		return nil, errwrap.Wrap(err, "task start")
 	}
-
 	r.State = stop.(*State)
 	r.State.OnDone(r.onDone...)
 	r.OnDoneEvent = &r.State.OnDoneEvent
@@ -78,43 +77,13 @@ func (r *Runner) MustRunWait() {
 	}
 }
 
-func (r *Runner) SigStop(sig ...os.Signal) *Runner {
-	if len(sig) == 0 {
-		sig = append(sig, syscall.SIGINT, syscall.SIGTERM)
-		sig = append(sig, runnner_signals...)
-	}
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, sig...)
-	go func() {
-		sig := <-sigs
-		r.log.Notice("received signal:", sig.String())
-		if r.State != nil {
-			r.Stop()
-		}
-	}()
-	return r
-}
-
-func (r *Runner) SigRun(sig ...os.Signal) (done chan interface{}, err error) {
-	if done, err = r.Run(); err != nil {
-		return nil, err
-	} else {
-		r.SigStop(sig...)
-	}
-	return
-}
-
-func (r *Runner) SigRunWait(sig ...os.Signal) (err error) {
-	if done, err := r.SigRun(); err != nil {
-		return err
-	} else {
-		<-done
-	}
-	return
-}
-
-func (r *Runner) MustSigRun(sig ...os.Signal) {
-	if err := r.SigRunWait(sig...); err != nil {
-		log.Fatal(err)
+func (this *Runner) SignalBinder() signald.Binder {
+	return signald.Binder{
+		Callback: func(signal os.Signal) {
+			this.StopWait()
+		},
+		Unbind: func(f func()) {
+			this.OnDone(f)
+		},
 	}
 }

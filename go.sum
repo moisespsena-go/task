@@ -1,0 +1,12 @@
+github.com/moisespsena-go/default-logger v0.0.1 h1:8WRBIWgu49qNm9IhuB1D65xYhoT8NhXMlwjGtzPFh6c=
+github.com/moisespsena-go/default-logger v0.0.1/go.mod h1:VX9fxGiUHjsHg5NB6WCH3SnmBB6YxpA+JfTvmhTrcdY=
+github.com/moisespsena-go/logging v0.0.2 h1:qWdk3NP4/4l8WZ7NJfUumr+4k+V+ctM8/guC6hKXSNw=
+github.com/moisespsena-go/logging v0.0.2/go.mod h1:ktLpiRW/3s714ULW/KBdDV7beOKr/uH/TPEcusg8d1o=
+github.com/moisespsena-go/path-helpers v0.0.3 h1:SdDktF5ubateJKQNhIkiABTeG+Ct1sTvzGv5DBFKxLA=
+github.com/moisespsena-go/path-helpers v0.0.3/go.mod h1:wgQw5+Ei7COdNIwKFG8eC1jyDDpTOIjjkrWPBZe1XU0=
+github.com/moisespsena-go/signald v0.0.3 h1:QAVALZB9eMR43ZTSl3P8TpeRkzyv3eLGQn3jWp+QxtE=
+github.com/moisespsena-go/signald v0.0.3/go.mod h1:ICJPmhYG39D9fa0veqakXkJaRW7Vxufnp5356/owonU=
+github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee h1:P6U24L02WMfj9ymZTxl7CxS73JC99x3ukk+DBkgQGQs=
+github.com/phayes/permbits v0.0.0-20190612203442-39d7c581d2ee/go.mod h1:3uODdxMgOaPYeWU7RzZLxVtJHZ/x1f/iHkBZuKJDzuY=
+github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
+github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

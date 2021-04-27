@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	errwrap "github.com/moisespsena-go/error-wrap"
+	"github.com/pkg/errors"
 )
 
 type OnDoneEvent struct {
@@ -30,11 +30,15 @@ func (od *OnDoneEvent) CallDoneFuncs() {
 type TaskSetupError struct {
 	Task  Task
 	Index int
-	Err   error
+	cause error
 }
 
-func (se TaskSetupError) Error() string {
-	return fmt.Sprintf("Task #%d %T setup failed", se.Index, se.Task)
+func (se *TaskSetupError) Cause() error {
+	return se.cause
+}
+
+func (se *TaskSetupError) Error() string {
+	return fmt.Sprintf("Task #%d %T setup failed: %v", se.Index, se.Task, se.cause)
 }
 
 func setup(appender Appender, add func(t ...Task) error, t ...Task) (err error) {
@@ -48,15 +52,15 @@ func setup(appender Appender, add func(t ...Task) error, t ...Task) (err error) 
 		switch s := t.(type) {
 		case TaskSetuper:
 			if err = s.Setup(); err != nil {
-				return errwrap.Wrap(err, &TaskSetupError{t, i, err})
+				return errors.Wrap(&TaskSetupError{t, i, err}, "task setup")
 			}
 		case TaskSetupAppender:
 			if err = s.Setup(appender); err != nil {
-				return errwrap.Wrap(err, &TaskSetupError{t, i, err})
+				return errors.Wrap(&TaskSetupError{t, i, err}, "task setup")
 			}
 		}
 		if err = add(t); err != nil {
-			return errwrap.Wrap(err, "Add task %d", i)
+			return errors.Wrapf(err, "add task %d", i)
 		}
 	}
 	return
